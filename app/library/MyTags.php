@@ -9,4 +9,3 @@ class MyTags extends Tag
     return '<div class="alert alert-danger">' . $message . '</div>';
   }
 }
-change
