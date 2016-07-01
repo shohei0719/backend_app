@@ -71,15 +71,15 @@
 <div class="container">
 <ol class="breadcrumb pankuzu-position">
     {% set count = 1 %}
-    <? foreach($breadcrumns as $key => $val){ ?>
-        <? if(count($breadcrumns) == $count){ ?>
+    <?php foreach($breadcrumns as $key => $val){ ?>
+        <?php if(count($breadcrumns) == $count){ ?>
             <li class="pankuzu-color">{{ val }}</li>
-        <? } elseif($auth_permission != 1 && (preg_match('/edit/', $_SERVER['REQUEST_URI']) || preg_match('/change/', $_SERVER['REQUEST_URI']))){ ?>
+        <?php } elseif($auth_permission != 1 && (preg_match('/edit/', $_SERVER['REQUEST_URI']) || preg_match('/change/', $_SERVER['REQUEST_URI']))){ ?>
             <li class="pankuzu-color">{{ val }}</li>
-        <? } else { ?>
+        <?php } else { ?>
             <li><a href="/backend_app/{{ key }}">{{ val }}</a></li>
-        <? } ?>
+        <?php } ?>
         {% set count += 1 %}
-    <?}?>
+    <?php } ?>
 </ol>
 </div>
