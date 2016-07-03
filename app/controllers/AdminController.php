@@ -76,7 +76,12 @@ class AdminController extends ControllerBase
 		 * 0 : 一覧から遷移 ($this->config->define->list)
 		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
-		switch($this->request->getPost('status')){
+
+		//いつか直す。
+		$status = $this->request->getPost('status');
+		!empty($status) ? $status : $status = 0;
+
+		switch($status){
 			//一覧から遷移
 			case $this->config->define->list:
 
