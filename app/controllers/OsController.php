@@ -6,53 +6,46 @@ class OsController extends ControllerBase
 	public function initialize()
 	{
 		parent::initialize();
-		//ログイン状態をチェック
-		if(!empty(parent::getAuth())){
-			$_auth = parent::getAuth();
-		}else{
-			$this->response->redirect('/backend_app/signin/');
-		}
+		/*
+		 * ログイン状態をチェック
+		 */
+	 	$_auth = parent::checkRooting('os');
+
+		$this->os = new Oss();
+		$this->admin = new Admins();
 	}
 
 	//一覧
-    public function indexAction()
-    {
+  public function indexAction()
+  {
 
-    	$currentPage = ($_GET['page']) ? (int) $_GET['page'] : 1;
+		$currentPage = ($_GET['page']) ? (int) $_GET['page'] : 1;
 
 		if($_GET['name']){ //Searchのときの処理
 
 			$name = ($_GET['name']) ? (string) substr($_GET['name'], 0, -1) : ''; //最後に「/」が入るので削除
 
-			$criteria = Oss::query();
-
-			if(!empty($name)){
-//$this->logger->info($name);
-				$criteria->andwhere('name LIKE :name:', ['name' => '%' . $name . '%']);
-			}
-
-			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$oss = $criteria->execute();
+			//検索結果取得
+			$oss = $this->os->getSearchResult($name);
 
 			//Viewに渡す
 			$this->view->name = $name;
 
 		} else {
-			$criteria = Oss::query();
-			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$oss = $criteria->execute();
+
+			$oss = $this->os->getAllResult();
+
 		}
 
+		$paginator = new Phalcon\Paginator\Adapter\Model(array(
+				"data" => $oss,
+				"limit" => 25,
+				"page" => $currentPage
+		));
 
-    	$paginator = new Phalcon\Paginator\Adapter\Model(array(
-    			"data" => $oss,
-    			"limit" => 25,
-    			"page" => $currentPage
-    	));
-
-    	$page = $paginator->getPaginate();
-    	$this->view->setVar("page", $page);
-    }
+		$page = $paginator->getPaginate();
+		$this->view->setVar("page", $page);
+	}
 
 	//編集
 	public function editAction(){
@@ -63,40 +56,27 @@ class OsController extends ControllerBase
 		}
 
 		//検索
-		$os = Oss::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $id)
-		));
-
-		//作成者情報を取得
-		$created_admin = Admins::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $os->created_id)
-		));
-
-		//更新者情報を取得
-		$updated_admin = Admins::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $os->updated_id)
-		));
+		$os = $this->os->getCarrierInfo($id);
+		$created_admin = $this->admin->getAdminInfo($os->created_id);
+		$updated_admin = $this->admin->getAdminInfo($os->updated_id);
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移
-		 * 1 : 編集から遷移
+		 * 0 : 一覧から遷移 ($this->config->define->list)
+		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
 		switch($this->request->getPost('status')){
 			//一覧から遷移
-			case 0:
+			case $this->config->define->list:
 
-				$this->view->maker = $os;
+				$this->view->os = $os;
 				$this->view->created_admin = $created_admin;
 				$this->view->updated_admin = $updated_admin;
 
 				break;
 
 			//編集から遷移
-			case 1:
+			case $this->config->define->edit:
 				//Post Params
 				$name = $this->request->getPost('name');
 
@@ -107,13 +87,13 @@ class OsController extends ControllerBase
 				if ($os->save() == false) {
 
 					//バリデーションエラー内容
-					foreach ($admin->getMessages() as $message) {
+					foreach ($os->getMessages() as $message) {
 						$errorMsg[$message->getField()] = $message->getMessage();
 					}
-					$this->logger->info(print_r($errorMsg,1));
+
 					//Viewに渡す
 					$this->view->errorMsg  	   = $errorMsg;
-					$this->view->maker         = $os;
+					$this->view->os		         = $os;
 					$this->view->created_admin = $created_admin;
 					$this->view->updated_admin = $updated_admin;
 
@@ -126,7 +106,6 @@ class OsController extends ControllerBase
 						)
 					);
 				}
-
 				break;
 		}
 	}
@@ -135,77 +114,70 @@ class OsController extends ControllerBase
 	public function newAction(){
 
 		if ($this->request->isPost() == true) {
-    		$os = new Oss();
 
-    		//Post Params
-    		$name 	    	= $this->request->getPost('name');
+  		//Post Params
+  		$name = $this->request->getPost('name');
 
 			//現在時刻取得
 			$datetime = date('Y-m-d H:i:s');
 
 			//キャリアデータ登録
-			$os->name     	= $name;
-			$os->created_id  = $this->_auth['id'];
-			$os->created_at  = $datetime;
-			$os->updated_id  = $this->_auth['id'];
-			$os->updated_at  = $datetime;
+			$this->os->name     	= $name;
+			$this->os->created_id = $this->_auth['id'];
+			$this->os->created_at = $datetime;
+			$this->os->updated_id = $this->_auth['id'];
+			$this->os->updated_at = $datetime;
 
-    		if ($os->save() == false) {
-    			//バリデーションエラー内容
-    			foreach ($os->getMessages() as $message) {
-    				$errorMsg[$message->getField()] = $message->getMessage();
-    			}
+  		if ($this->os->save() == false) {
+  			//バリデーションエラー内容
+  			foreach ($this->os->getMessages() as $message) {
+  				$errorMsg[$message->getField()] = $message->getMessage();
+  			}
 
-    			$this->view->errorMsg 		= $errorMsg;
-				$this->view->name 	  		= $name;
+  			$this->view->errorMsg 	= $errorMsg;
+				$this->view->name 	  	= $name;
 
-    		} else {
-    			$this->dispatcher->forward(
-    				array(
-    					 'controller' => 'Os'
-    					,'action'     => 'success'
-    				)
-    			);
-    		}
-    	}
-
+  		} else {
+  			$this->dispatcher->forward(
+  				array(
+  					 'controller' => 'Os'
+  					,'action'     => 'success'
+  				)
+  			);
+  		}
+  	}
 	}
 
 	public function deleteAction(){
 		$id = ($_GET['id']) ? (int) $_GET['id'] : 0;
 
 		if(!empty($id) && $id > 0){
-			//IDから管理者情報取得
-			$os = Oss::findFirst(array(
-				"(id = :id:)",
-				'bind' => array('id' => $id)
-			));
+			//IDからOS者情報取得
+			$os = $this->os->getOsInfo($id);
+
 			//delete_flgのステータスをONにする
-			$os->delete_flg = 1;
-			$os->updated_id  = $this->_auth['id'];
-			$os->updated_at  = date('Y-m-d H:i:s');
+			$os->delete_flg = $this->config->define->invalid;
+			$os->updated_id = $this->_auth['id'];
+			$os->updated_at = date('Y-m-d H:i:s');
 
 			if ($os->save() == false) {
 				foreach ($os->getMessages() as $message) {
 					$errorMsg[$message->getField()] = $message->getMessage();
 				}
-$this->logger->info(print_r($errorMsg,1));
 			} else {
 				$this->dispatcher->forward(
-    				array(
-    					 'controller' => 'Os'
-    					,'action'     => 'success'
-    				)
-    			);
+  				array(
+  					 'controller' => 'Os'
+  					,'action'     => 'success'
+  				)
+  			);
 			}
 		}
 	}
 
 	//成功時
-	public function successAction(){
-		//編集画面から遷移時のみ表示
-    	if($this->request->isPost() == false){
-    		$this->response->redirect('/backend_app/');
-    	}
+	public function successAction()
+	{
+		parent::successRedirect($this->request->isPost(), 'os');
 	}
 }

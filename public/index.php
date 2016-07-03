@@ -18,6 +18,15 @@ try {
     }
 
     /**
+     * Read the Message File (etc. Validation message ...)
+     */
+    $message = new ConfigIni(APP_PATH . 'app/config/message.ini');
+    if (is_readable(APP_PATH . 'app/config/message.ini')) {
+        $override = new ConfigIni(APP_PATH . 'app/config/message.ini');
+        $message->merge($override);
+    }
+
+    /**
      * Auto-loader configuration
      */
     require APP_PATH . 'app/config/loader.php';

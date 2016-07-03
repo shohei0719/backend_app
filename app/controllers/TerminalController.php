@@ -6,110 +6,75 @@ class TerminalController extends ControllerBase
 	public function initialize()
 	{
 		parent::initialize();
-		//ログイン状態をチェック
-		if(!empty(parent::getAuth())){
-			$_auth = parent::getAuth();
-		}else{
-			$this->response->redirect('/backend_app/signin/');
-		}
+		/*
+		 * ログイン状態をチェック
+		 */
+	 	$_auth = parent::checkRooting('terminal');
+
+		$this->terminal = new Terminals();
+		$this->admin 		= new Admins();
+		$this->carrier  = new Carriers();
+		$this->maker		= new Makers();
+		$this->os				= new Oss();
+		$this->organization = new Organizations();
+		$this->version  = new Versions(); 
 	}
 
 	//一覧
   public function indexAction()
   {
 
-    	$currentPage = ($_GET['page']) ? (int) $_GET['page'] : 1;
+  	$currentPage = ($_GET['page']) ? (int) $_GET['page'] : 1;
 
-			//キャリア一覧取得
-			$criteria = Carriers::query();
-			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$carriers = $criteria->execute();
+		//キャリア一覧取得
+		$carriers = $this->carrier->getAllResult();
 
-			//メーカー一覧取得
-			$criteria = Makers::query();
-			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$makers = $criteria->execute();
+		//メーカー一覧取得
+		$makers = $this->maker->getAllResult();
 
-			//OS一覧取得
-			$criteria = Oss::query();
-			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$oss = $criteria->execute();
+		//OS一覧取得
+		$oss = $this->os->getAllResult();
 
-			//バージョン一覧取得
-			/*
-			$criteria = Versions::query();
-			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$versions = $criteria->execute();
-			*/
+		//組織一覧取得
+		$organizations = $this->organization->getAllResult();
 
-			//組織一覧取得
-			$criteria = Organizations::query();
-			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$organizations = $criteria->execute();
+		$this->view->carriers 			= $carriers;
+		$this->view->makers 				= $makers;
+		$this->view->oss 						= $oss;
+		$this->view->organizations 	= $organizations;
 
-			$this->view->carriers 			= $carriers;
-			$this->view->makers 				= $makers;
-			$this->view->oss 						= $oss;
-			//$this->view->versions 			= $versions;
-			$this->view->organizations 	= $organizations;
+		if($_GET['carrier'] or $_GET['maker'] or $_GET['os'] or $_GET['organization'] or $_GET['name']){ //Searchのときの処理
 
-		if($_GET['related_os'] or $_GET['name']){ //Searchのときの処理
+			$carrier 			= ($_GET['carrier']) ? $_GET['carrier'] : 0;
+			$maker 				= ($_GET['maker']) ? $_GET['maker'] : 0;
+			$os 					= ($_GET['os']) ? $_GET['os'] : 0;
+			$organization = ($_GET['organization']) ? $_GET['organization'] : 0;
+			$name 				= ($_GET['name']) ? (string) substr($_GET['name'], 0, -1) : ''; //最後に「/」が入るので削除
 
-			$related_os = ($_GET['related_os']) ? $_GET['related_os'] : 0;
-			$name = ($_GET['name']) ? (string) substr($_GET['name'], 0, -1) : ''; //最後に「/」が入るので削除
-
-			$criteria = Versions::query();
-			$criteria->columns('Versions.id, o.name as os_name, Versions.name');
-			$criteria->leftJoin('Oss', 'o.id = Versions.related_os', 'o');
-
-			//related_osがPostされているとき
-			if(!empty($related_os)){
-				$criteria->andwhere('Versions.related_os = :related_os:', ['related_os' => $related_os]);
-			}
-
-			//nameがPostされているとき
-			if(!empty($name)){
-//$this->logger->info($name);
-				$criteria->andwhere('Versions.name LIKE :name:', ['name' => '%' . $name . '%']);
-			}
-
-			$criteria->andwhere('Versions.delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$criteria->andwhere('o.delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$versions = $criteria->execute();
+			$versions = $this->terminal->getSearchResult($carrier, $maker, $os, $organization, $name);
 
 			//Viewに渡す
-			$this->view->related_os = $related_os;
-			$this->view->name = $name;
+			$this->view->carrier 			= $carrier;
+			$this->view->maker 				= $maker;
+			$this->view->os 					= $os;
+			$this->view->organization = $organization;
+			$this->view->name 				= $name;
 
 		} else {
-			$criteria = Terminals::query();
-			$criteria->columns('Terminals.id as id, Terminals.name as name, os.name as os_name, version.name as version_name, Terminals.tel, Terminals.mail');
-			$criteria->leftJoin('Oss', 'os.id = Terminals.os', 'os');
-			$criteria->leftJoin('Makers', 'maker.id = Terminals.maker', 'maker');
-			$criteria->leftJoin('Versions', 'version.id = Terminals.version', 'version');
-			$criteria->leftJoin('Carriers', 'carrier.id = Terminals.carrier', 'carrier');
-			$criteria->leftJoin('Organizations', 'organization.id = Terminals.organization', 'organization');
-			$criteria->andwhere('Terminals.delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$criteria->andwhere('os.delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$criteria->andwhere('maker.delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$criteria->andwhere('version.delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$criteria->andwhere('carrier.delete_flg = :delete_flg:', ['delete_flg' => 0]);
-			$criteria->andwhere('organization.delete_flg = :delete_flg:', ['delete_flg' => 0]);
 
-			$terminals = $criteria->execute();
-//$this->logger->info(print_r($versions,1));
+			$terminals = $this->terminal->getAllResult();
+
 		}
 
+  	$paginator = new Phalcon\Paginator\Adapter\Model(array(
+  			"data" => $terminals,
+  			"limit" => 25,
+  			"page" => $currentPage
+  	));
 
-    	$paginator = new Phalcon\Paginator\Adapter\Model(array(
-    			"data" => $terminals,
-    			"limit" => 25,
-    			"page" => $currentPage
-    	));
-
-    	$page = $paginator->getPaginate();
-    	$this->view->setVar("page", $page);
-    }
+  	$page = $paginator->getPaginate();
+  	$this->view->setVar("page", $page);
+  }
 
 	//編集
 	public function editAction(){
@@ -120,47 +85,24 @@ class TerminalController extends ControllerBase
 		}
 
 		//検索
-		$terminal = Terminals::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $id)
-		));
-
-		//作成者情報を取得
-		$created_admin = Admins::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $terminal->created_id)
-		));
-
-		//更新者情報を取得
-		$updated_admin = Admins::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $terminal->updated_id)
-		));
+		$terminal = $this->terminal->getTerminalInfo($id);
+		$created_admin = $this->admin->getAdminInfo($terminal->created_id);
+		$updated_admin = $this->admin->getAdminInfo($terminal->updated_id);
 
 		//OSテーブルから取得
-		$criteria = Oss::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$oss = $criteria->execute();
+		$oss = $this->os->getAllResult();
 
 		//バージョンテーブルから取得
-		$criteria = Versions::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$versions = $criteria->execute();
+		$versions = $this->version->getAllResult();
 
 		//キャリアテーブルから取得
-		$criteria = Carriers::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$carriers = $criteria->execute();
+		$carriers = $this->carrier->getAllResult();
 
 		//メーカーテーブルから取得
-		$criteria = Makers::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$makers = $criteria->execute();
+		$makers = $this->maker->getAllResult();
 
 		//組織テーブルから取得
-		$criteria = Organizations::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$organizations = $criteria->execute();
+		$organizations = $this->organization->getAllResult();
 
 		//Viewに渡す
 		$this->view->oss = $oss;
@@ -171,12 +113,12 @@ class TerminalController extends ControllerBase
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移
-		 * 1 : 編集から遷移
+		 * 0 : 一覧から遷移 ($this->config->define->list)
+		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
 		switch($this->request->getPost('status')){
 			//一覧から遷移
-			case 0:
+			case $this->config->define->list:
 
 				$this->view->terminal = $terminal;
 				$this->view->created_admin = $created_admin;
@@ -185,7 +127,7 @@ class TerminalController extends ControllerBase
 				break;
 
 			//編集から遷移
-			case 1:
+			case $this->config->define->edit:
 				//Post Params
 				$carrier 	   	 	= $this->request->getPost('carrier');
 			 	$maker				 	= $this->request->getPost('maker');
@@ -201,7 +143,7 @@ class TerminalController extends ControllerBase
 				//拡張子取得
 				$info 	= new SplFileInfo($_FILES["image"]["name"]);
 				$thumb  = uniqid() . "." . $info->getExtension();
-$this->logger->info($thumb);
+//$this->logger->info($thumb);
 
 				//キャリアデータ登録
 				$terminal->name     	  = $name;
@@ -249,7 +191,7 @@ $this->logger->info($thumb);
 					$this->dispatcher->forward(
 						array(
 							'controller' => 'Terminal'
-							,'action' => 'success'
+							,'action' 	 => 'success'
 						)
 					);
 				}
@@ -262,29 +204,19 @@ $this->logger->info($thumb);
 	public function newAction(){
 
     //OSテーブルから取得
-		$criteria = Oss::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$oss = $criteria->execute();
+		$oss = $this->os->getAllResult();
 
 		//バージョンテーブルから取得
-		$criteria = Versions::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$versions = $criteria->execute();
+		$versions = $this->version->getAllResult();
 
 		//キャリアテーブルから取得
-		$criteria = Carriers::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$carriers = $criteria->execute();
+		$carriers = $this->carrier->getAllResult();
 
 		//メーカーテーブルから取得
-		$criteria = Makers::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$makers = $criteria->execute();
+		$makers = $this->maker->getAllResult();
 
 		//組織テーブルから取得
-		$criteria = Organizations::query();
-		$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-		$organizations = $criteria->execute();
+		$organizations = $this->organization->getAllResult();
 
 		//Viewに渡す
 		$this->view->oss = $oss;
@@ -293,9 +225,7 @@ $this->logger->info($thumb);
 		$this->view->makers = $makers;
 		$this->view->organizations = $organizations;
 
-//$this->logger->info($oss);
 		if ($this->request->isPost() == true) {
-    	$terminal = new Terminals();
 
     	//Post Params
     	$carrier 	   	 	= $this->request->getPost('carrier');
@@ -316,90 +246,84 @@ $this->logger->info($thumb);
 			$datetime = date('Y-m-d H:i:s');
 
 			//キャリアデータ登録
-			$terminal->name     	  = $name;
-			$terminal->carrier			= $carrier;
-			$terminal->maker				= $maker;
-			$terminal->os						= $os;
-			$terminal->version			= $version;
-			$terminal->name					= $name;
+			$this->terminal->name     	  = $name;
+			$this->terminal->carrier			= $carrier;
+			$this->terminal->maker				= $maker;
+			$this->terminal->os						= $os;
+			$this->terminal->version			= $version;
+			$this->terminal->name					= $name;
 			//$terminal->thumb				= $thumb;
-			$terminal->organization = $organization;
-			$terminal->tel 					= $tel;
-			$terminal->mail					= $mail;
-			$terminal->comment  		= $comment;
-			$terminal->image				= $thumb;
-			$terminal->rental_user	= $this->_auth['id'];
+			$this->terminal->organization = $organization;
+			$this->terminal->tel 					= $tel;
+			$this->terminal->mail					= $mail;
+			$this->terminal->comment  		= $comment;
+			$this->terminal->image				= $thumb;
+			$this->terminal->rental_user	= $this->_auth['id'];
 
-			$terminal->created_id  	= $this->_auth['id'];
-			$terminal->created_at  	= $datetime;
-			$terminal->updated_id  	= $this->_auth['id'];
-			$terminal->updated_at  	= $datetime;
+			$this->terminal->created_id  	= $this->_auth['id'];
+			$this->terminal->created_at  	= $datetime;
+			$this->terminal->updated_id  	= $this->_auth['id'];
+			$this->terminal->updated_at  	= $datetime;
 
-    		if ($terminal->save() == false) {
-    			//バリデーションエラー内容
-    			foreach ($terminal->getMessages() as $message) {
-    				$errorMsg[$message->getField()] = $message->getMessage();
-    			}
+  		if ($this->terminal->save() == false) {
+  			//バリデーションエラー内容
+  			foreach ($this->terminal->getMessages() as $message) {
+  				$errorMsg[$message->getField()] = $message->getMessage();
+  			}
 
-    			$this->view->errorMsg 			 = $errorMsg;
-					$this->view->name 	  			 = $name;
-					$this->view->carrier_id			 = $carrier;
-					$this->view->maker_id				 = $maker;
-					$this->view->os_id					 = $os;
-					$this->view->version_id			 = $version;
-					$this->view->image					 = $thumb;
-					$this->view->organization_id = $organization;
-					$this->view->tel 						 = $tel;
-					$this->view->mail				 		 = $mail;
-					$this->view->comment				 = $comment;
+  			$this->view->errorMsg 			 = $errorMsg;
+				$this->view->name 	  			 = $name;
+				$this->view->carrier_id			 = $carrier;
+				$this->view->maker_id				 = $maker;
+				$this->view->os_id					 = $os;
+				$this->view->version_id			 = $version;
+				$this->view->image					 = $thumb;
+				$this->view->organization_id = $organization;
+				$this->view->tel 						 = $tel;
+				$this->view->mail				 		 = $mail;
+				$this->view->comment				 = $comment;
 
-    		} else {
-    			$this->dispatcher->forward(
-    				array(
-    					 'controller' => 'Terminal'
-    					,'action'     => 'success'
-    				)
-    			);
-    		}
-    	}
-
+  		} else {
+  			$this->dispatcher->forward(
+  				array(
+  					 'controller' => 'Terminal'
+  					,'action'     => 'success'
+  				)
+  			);
+  		}
+  	}
 	}
 
 	public function deleteAction(){
 		$id = ($_GET['id']) ? (int) $_GET['id'] : 0;
 
 		if(!empty($id) && $id > 0){
-			//IDから管理者情報取得
-			$terminal = Terminals::findFirst(array(
-				"(id = :id:)",
-				'bind' => array('id' => $id)
-			));
+			//IDから端末情報を取得
+			$terminal = $this->terminal->getTerminalInfo();
+
 			//delete_flgのステータスをONにする
-			$terminal->delete_flg = 1;
-			$terminal->updated_id  = $this->_auth['id'];
-			$terminal->updated_at  = date('Y-m-d H:i:s');
+			$terminal->delete_flg = $this->config->define->invalid;
+			$terminal->updated_id = $this->_auth['id'];
+			$terminal->updated_at = date('Y-m-d H:i:s');
 
 			if ($terminal->save() == false) {
 				foreach ($terminal->getMessages() as $message) {
 					$errorMsg[$message->getField()] = $message->getMessage();
 				}
-//$this->logger->info(print_r($errorMsg,1));
 			} else {
 				$this->dispatcher->forward(
-    				array(
-    					 'controller' => 'Terminal'
-    					,'action'     => 'success'
-    				)
-    			);
+  				array(
+  					 'controller' => 'Terminal'
+  					,'action'     => 'success'
+  				)
+  			);
 			}
 		}
 	}
 
 	//成功時
-	public function successAction(){
-		//編集画面から遷移時のみ表示
-    	if($this->request->isPost() == false){
-    		$this->response->redirect('/backend_app/');
-    	}
+	public function successAction()
+	{
+		parent::successRedirect($this->request->isPost(), 'terminal');
 	}
 }

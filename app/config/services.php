@@ -132,6 +132,7 @@ $di->set('MyTags', function(){
  * view : {{this.config.database.dbname }}
  */
 $di->set('config', $config, true);
+$di->set('message', $message, true);
 
 /**
  * error handling

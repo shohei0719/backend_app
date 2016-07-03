@@ -11,8 +11,8 @@ class Oss extends Model
     public function initilize()
     {
 
-        //adminsテーブル
-        $this->setSource('oss');
+      //adminsテーブル
+      $this->setSource('oss');
 
     }
 
@@ -23,15 +23,15 @@ class Oss extends Model
     public function beforeValidation()
     {
 
-        //必須入力チェック
-        $this->validate(new PresenceOfValidator(array(
-            'field'		=> 'name',
-            'message' 	=> $this->getDI()->get('config')->validates_oss->presence_name
-        )));
+      //必須入力チェック
+      $this->validate(new PresenceOfValidator(array(
+          'field'		=> 'name',
+          'message' => $this->getDI()->get('message')->validates_oss->presence_name
+      )));
 
-        if ($this->validationHasFailed() == true) {
-            return false;
-        }
+      if ($this->validationHasFailed() == true) {
+          return false;
+      }
 
     }
 
@@ -40,16 +40,66 @@ class Oss extends Model
      */
     public function validation()
     {
-        //重複チェック
-        if (empty($this->getMessages('name'))) {
-            $this->validate(new UniquenessValidator(array(
-                'field' => 'name',
-                'message' => $this->getDI()->get('config')->validates_oss->uniq_name
-            )));
-        }
+      //重複チェック
+      if (empty($this->getMessages('name'))) {
+          $this->validate(new UniquenessValidator(array(
+              'field'   => 'name',
+              'message' => $this->getDI()->get('message')->validates_oss->uniq_name
+          )));
+      }
 
-        if ($this->validationHasFailed() == true) {
-            return false;
-        }
+      if ($this->validationHasFailed() == true) {
+          return false;
+      }
     }
+
+    /*
+		 * 検索結果を返す
+		 * @param $permission
+		 * @param $name
+		 * @param $mail
+		 * @return $oss 検索結果
+		 */
+		public function getSearchResult($name)
+		{
+			$criteria = Oss::query();
+
+			if(!empty($name)){
+				$criteria->andwhere('name LIKE :name:', ['name' => '%' . $name . '%']);
+			}
+
+			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => $this->getDI()->get('config')->define->valid]);
+			$oss = $criteria->execute();
+
+			return $oss;
+		}
+
+		/*
+		 * 全結果を返す
+		 * @return $oss 全結果
+		 */
+		public function getAllResult()
+		{
+			$criteria = Oss::query();
+			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => $this->getDI()->get('config')->define->valid]);
+			$oss = $criteria->execute();
+
+			return $oss;
+		}
+
+		/*
+		 * IDで検索してOS情報を返す
+		 * @param $id
+		 * @return $os 全結果
+		 */
+		public function getOsInfo($id)
+		{
+			$os = Oss::findFirst(array(
+				"(id = :id:)",
+				'bind' => array('id' => $id)
+			));
+
+			return $os;
+		}
+
 }

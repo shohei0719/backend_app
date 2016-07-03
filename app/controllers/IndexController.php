@@ -2,19 +2,18 @@
 
 class IndexController extends ControllerBase
 {
-	
+
 	public function initialize()
 	{
 		parent::initialize();
-		if(empty(parent::getAuth())){
-			$this->response->redirect('/backend_app/signin/');
-		}else{
-			$this->response->redirect('/backend_app/admin/');
-		}
+		/*
+		 * ログイン状態をチェック
+		 */
+	 	$_auth = parent::checkRooting('index');
 	}
-	
+
 	public function indexAction()
 	{
-		
+
 	}
 }

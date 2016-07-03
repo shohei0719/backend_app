@@ -8,70 +8,50 @@ class AdminController extends ControllerBase
 	public function initialize()
 	{
 		parent::initialize();
-		//ログイン状態をチェック
-		if(!empty(parent::getAuth())){
-			$_auth = parent::getAuth();
-			//管理者情報編集権限がない場合は/user/にリダイレクト
-			if($_auth['permission'] != 1){
-				if(!preg_match('/edit/', $_SERVER['REQUEST_URI']) and !preg_match('/change/', $_SERVER['REQUEST_URI'])){
-					$this->response->redirect('/backend_app/carrier/');
-				}
-			}
-		}else{
-			$this->response->redirect('/backend_app/signin/');
-		}
+		/*
+		 * ログイン状態をチェック
+		 */
+	 	$_auth = parent::checkRooting('admin');
 
+		$this->admin = new Admins();
 	}
 
 	//一覧
-    public function indexAction()
-    {
+  public function indexAction()
+  {
 
-    	$currentPage = ($_GET['page']) ? (int) $_GET['page'] : 1;
+  	$currentPage = ($_GET['page']) ? (int) $_GET['page'] : 1;
 
-			if($_GET['name'] or $_GET['permission'] or $_GET['mail']){ //Searchのときの処理
+		if($_GET['name'] or $_GET['permission'] or $_GET['mail']){ //Searchのときの処理
 
-				$name 		 = ($_GET['name']) ? (string) $_GET['name'] : '';
-				$permission  = ($_GET['permission']) ? (int) $_GET['permission'] : 0;
-				$mail 		 = ($_GET['mail']) ? (string) substr($_GET['mail'], 0, -1) : ''; //最後に「/」が入るので削除
-				$criteria = Admins::query();
+			$name 		   = ($_GET['name']) ? (string) $_GET['name'] : '';
+			$permission  = ($_GET['permission']) ? (int) $_GET['permission'] : 0;
+			$mail 		   = ($_GET['mail']) ? (string) substr($_GET['mail'], 0, -1) : ''; //最後に「/」が入るので削除
 
-				if(!empty($permission)){
-					$criteria->andwhere('permission = :permission:', ['permission' => $permission]);
-				}
-				if(!empty($name)){
-					$criteria->andwhere('name LIKE :name:', ['name' => '%' . $name . '%']);
-				}
-				if(!empty($mail)){
-					$criteria->andwhere('mail LIKE :mail:', ['mail' => '%' . $mail . '%']);
-				}
-				$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-				$admins = $criteria->execute();
+			//検索結果取得
+			$admins = $this->admin->getSearchResult($permission, $name, $mail);
 
-				//Viewに渡す
-				$this->view->name 		= $name;
-				$this->view->mail 		= $mail;
+			//Viewに渡す
+			$this->view->name 		= $name;
+			$this->view->mail 		= $mail;
 
-			} else {
-				//$admins = Admins::find();
-				$criteria = Admins::query();
-				$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => 0]);
-				$admins = $criteria->execute();
-			}
+		} else {
 
+			//検索結果取得
+			$admins = $this->admin->getAllResult();
 
-    	$paginator = new Phalcon\Paginator\Adapter\Model(array(
-    			"data" => $admins,
-    			"limit" => 25,
-    			"page" => $currentPage
-    	));
+		}
 
-    	//$this->view->paginator = $pginator
-    	$page = $paginator->getPaginate();
+  	$paginator = new Phalcon\Paginator\Adapter\Model(array(
+  			"data" 	=> $admins,
+  			"limit" => 25,
+  			"page" 	=> $currentPage
+  	));
 
-    	//$this->logger->info(print_r($page,1));
-    	$this->view->setVar("page", $page);
-    }
+  	$page = $paginator->getPaginate();
+
+  	$this->view->setVar("page", $page);
+  }
 
 	//編集
 	public function editAction(){
@@ -83,40 +63,22 @@ class AdminController extends ControllerBase
 			$id = substr($this->request->getQuery('id'), 0, -1);
 		}
 
-		//permissonが全権限でない場合
-		if($_auth['permission'] != 1){
-			//getパラメータidとと自分のidが同じでない場合は戻す
-			if($id != (string) $_auth['id']){
-				$this->response->redirect('/backend_app/user/');
-			}
-		}
+		//全権限を持たない管理者でも自分自身の管理者情報を変更できるようにする
+		parent::checkRooting('admin', $id);
 
 		//検索
-		$admin = Admins::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $id)
-		));
-
-		//作成者情報を取得
-		$created_admin = Admins::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $admin->created_id)
-		));
-
-		//更新者情報を取得
-		$updated_admin = Admins::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $admin->updated_id)
-		));
+		$admin = $this->admin->getAdminInfo($id);
+		$created_admin = $this->admin->getAdminInfo($admin->created_id);
+		$updated_admin = $this->admin->getAdminInfo($admin->updated_id);
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移
-		 * 1 : 編集から遷移
+		 * 0 : 一覧から遷移 ($this->config->define->list)
+		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
 		switch($this->request->getPost('status')){
 			//一覧から遷移
-			case 0:
+			case $this->config->define->list:
 
 				$this->view->admin = $admin;
 				$this->view->created_admin = $created_admin;
@@ -125,7 +87,7 @@ class AdminController extends ControllerBase
 				break;
 
 			//編集から遷移
-			case 1:
+			case $this->config->define->edit:
 				//Post Params
 				$name 	   	= $this->request->getPost('name');
 				$mail 	   	= $this->request->getPost('mail');
@@ -154,10 +116,7 @@ class AdminController extends ControllerBase
 
 					//自分の情報を更新した場合　＆　セッション更新
 					if($id == $this->_auth['id']){
-						$admin = Admins::findFirst(array(
-							"(id = :id:)",
-							'bind' => array('id' => $this->_auth['id'])
-						));
+						$admin = $this->admin->getAdminInfo($this->_auth['id']);
 						$this->_registerSession($admin);
 					}
 
@@ -177,12 +136,11 @@ class AdminController extends ControllerBase
 	public function newAction(){
 
 		if ($this->request->isPost() == true) {
-    		$admin = new Admins();
 
-    		//Post Params
-    		$name 	    	= $this->request->getPost('name');
-			$mail 			= $this->request->getPost('mail');
-    		$password 		= $this->request->getPost('password');
+    	//Post Params
+    	$name 	    	= $this->request->getPost('name');
+			$mail		 			= $this->request->getPost('mail');
+    	$password 		= $this->request->getPost('password');
 			$re_password 	= $this->request->getPost('re_password');
 			$permission 	= $this->request->getPost('permission');
 
@@ -190,39 +148,38 @@ class AdminController extends ControllerBase
 			$datetime = date('Y-m-d H:i:s');
 
 			//管理者データ登録
-    		$admin->mail 		= $mail;
-    		$admin->password 	= $password;
-			$admin->re_password = $re_password;
-			$admin->name     	= $name;
-			$admin->permission 	= $permission;
-			$admin->created_id  = $this->_auth['id'];
-			$admin->created_at  = $datetime;
-			$admin->updated_id  = $this->_auth['id'];
-			$admin->updated_at  = $datetime;
+    	$this->admin->mail 				= $mail;
+    	$this->admin->password 		= $password;
+			$this->admin->re_password = $re_password;
+			$this->admin->name     		= $name;
+			$this->admin->permission 	= $permission;
+			$this->admin->created_id  = $this->_auth['id'];
+			$this->admin->created_at  = $datetime;
+			$this->admin->updated_id  = $this->_auth['id'];
+			$this->admin->updated_at  = $datetime;
 
-    		if ($admin->save() == false) {
-    			//バリデーションエラー内容
-    			foreach ($admin->getMessages() as $message) {
-    				$errorMsg[$message->getField()] = $message->getMessage();
-    			}
+    	if ($this->admin->save() == false) {
+    		//バリデーションエラー内容
+    		foreach ($this->admin->getMessages() as $message) {
+    			$errorMsg[$message->getField()] = $message->getMessage();
+    		}
 
-    			$this->view->errorMsg 		= $errorMsg;
+    		$this->view->errorMsg 		= $errorMsg;
 				$this->view->name 	  		= $name;
 				$this->view->mail 	  		= $mail;
 				$this->view->password 		= $password;
 				$this->view->re_password 	= $re_password;
 				$this->view->permission 	= $permission;
 
-    		} else {
-    			$this->dispatcher->forward(
-    				array(
-    					 'controller' => 'Admin'
-    					,'action'     => 'success'
-    				)
-    			);
-    		}
+    	} else {
+  			$this->dispatcher->forward(
+  				array(
+  					 'controller' => 'Admin'
+  					,'action'     => 'success'
+  				)
+  			);
     	}
-
+    }
 	}
 
 	//パスワード変更
@@ -234,10 +191,7 @@ class AdminController extends ControllerBase
 		$this->view->id = $id;
 
 		//検索
-		$admin = Admins::findFirst(array(
-			"(id = :id:)",
-			'bind' => array('id' => $id)
-		));
+		$admin = $this->admin->getAdminInfo($id);
 
 		if($this->request->isPost() == true){
 			//Post Params
@@ -268,17 +222,16 @@ class AdminController extends ControllerBase
 		}
 	}
 
+	//削除
 	public function deleteAction(){
 		$id = ($_GET['id']) ? (int) $_GET['id'] : 0;
 
 		if(!empty($id) && $id > 0){
 			//IDから管理者情報取得
-			$admin = Admins::findFirst(array(
-				"(id = :id:)",
-				'bind' => array('id' => $id)
-			));
+			$admin = $this->admin->getAdminInfo($id);
+
 			//delete_flgのステータスをONにする
-			$admin->delete_flg = 1;
+			$admin->delete_flg  = $this->config->define->invalid;
 			$admin->updated_id  = $this->_auth['id'];
 			$admin->updated_at  = date('Y-m-d H:i:s');
 
@@ -286,7 +239,6 @@ class AdminController extends ControllerBase
 				foreach ($admin->getMessages() as $message) {
 					$errorMsg[$message->getField()] = $message->getMessage();
 				}
-$this->logger->info(print_r($errorMsg,1));
 			} else {
 				$this->dispatcher->forward(
     				array(
@@ -299,10 +251,8 @@ $this->logger->info(print_r($errorMsg,1));
 	}
 
 	//成功時
-	public function successAction(){
-		//編集画面から遷移時のみ表示
-    	if($this->request->isPost() == false){
-    		$this->response->redirect('/backend_app/');
-    	}
+	public function successAction()
+	{
+		parent::successRedirect($this->request->isPost(), 'admin');
 	}
 }

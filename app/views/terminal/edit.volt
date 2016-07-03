@@ -14,6 +14,37 @@ function img_reset(){
     var dom_obj_parent=dom_obj.parentNode;
     dom_obj_parent.removeChild(dom_obj);
 }
+$(function(){
+  //画像ファイルプレビュー表示のイベント追加 fileを選択時に発火するイベントを登録
+  $('form').on('change', 'input[type="file"]', function(e) {
+    var file = e.target.files[0],
+        reader = new FileReader(),
+        $preview = $(".preview");
+        t = this;
+
+    // 画像ファイル以外の場合は何もしない
+    if(file.type.indexOf("image") < 0){
+      return false;
+    }
+
+    // ファイル読み込みが完了した際のイベント登録
+    reader.onload = (function(file) {
+      return function(e) {
+        //既存のプレビューを削除
+        $preview.empty();
+        // .prevewの領域の中にロードした画像を表示するimageタグを追加
+        $preview.append($('<img>').attr({
+                  src: e.target.result,
+                  width: "150px",
+                  class: "preview",
+                  title: file.name
+              }));
+      };
+    })(file);
+
+    reader.readAsDataURL(file);
+  });
+});
 </script>
 
 
@@ -121,8 +152,9 @@ function img_reset(){
 	{# ---- イメージ ---- #}
 	<div id="thumb" class="form-group">
 		<label for="name"><i class="fa fa-user" aria-hidden="true"></i>&nbsp;イメージ</label><br/>
-      {% if not(terminal.image is empty) %}<img src="/backend_app/img/images/{{terminal.image}}" class="thumb" /><br />{% endif %}
-      <div style="display: inline-block;"><input type="file" name="image" multiple="multiple" />&nbsp;<a id="button" href=""><i class="fa fa-trash-o fa-lg"></i></a></div>
+      <input type="file" name="image">
+      {#<div style="display: inline-block;"><input type="file" name="image" multiple="multiple" />&nbsp;<a id="button" href=""><i class="fa fa-trash-o fa-lg"></i></a></div>#}
+      <div class="preview" />
     </label>
   </div>
 

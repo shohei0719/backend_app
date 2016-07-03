@@ -34,25 +34,25 @@ class Users extends Model
         //必須入力チェック
         $this->validate(new PresenceOfValidator(array(
             'field'		=> 'mail',
-            'message' 	=> $this->getDI()->get('config')->validates_common->presence_mail
+            'message' => $this->getDI()->get('message')->validates_common->presence_mail
         )));
 
         $this->validate(new PresenceOfValidator(array(
             'field'		=> 'password',
-            'message' 	=> $this->getDI()->get('config')->validates_common->presence_password
+            'message' => $this->getDI()->get('message')->validates_common->presence_password
         )));
 
         //管理情報更新時/削除時にはパスワードのチェックをしない
         if(!preg_match('/edit/', $_SERVER['REQUEST_URI']) && !preg_match('/delete/', $_SERVER['REQUEST_URI'])){
             $this->validate(new PresenceOfValidator(array(
                 'field'		=> 're_password',
-                'message' 	=> $this->getDI()->get('config')->validates_common->presence_re_password
+                'message' => $this->getDI()->get('message')->validates_common->presence_re_password
             )));
         }
 
         $this->validate(new PresenceOfValidator(array(
             'field'		=> 'name',
-            'message' 	=> $this->getDI()->get('config')->validates_common->presence_name
+            'message' => $this->getDI()->get('message')->validates_common->presence_name
         )));
 
         if ($this->validationHasFailed() == true) {
@@ -86,7 +86,7 @@ class Users extends Model
                 $this->validate(new RegexValidator(array(
                         'field' 	=> 'password',
                         'pattern' 	=> '/^[a-zA-Z0-9]+$/',
-                        'message' 	=> $this->getDI()->get('config')->validates_common->regex_password
+                        'message' 	=> $this->getDI()->get('message')->validates_common->regex_password
                 )));
             }
 
@@ -98,15 +98,15 @@ class Users extends Model
                     'max'				=> 20,
                     'min'				=> 8,
                     //'message'			=> '8文字以上20文字以下でパスワードをご入力ください。'
-                    'messageMaximum' 	=> $this->getDI()->get('config')->validates_common->maximum_length_password,
-                    'messageMinimum' 	=> $this->getDI()->get('config')->validates_common->minimum_length_password,
+                    'messageMaximum' 	=> $this->getDI()->get('message')->validates_common->maximum_length_password,
+                    'messageMinimum' 	=> $this->getDI()->get('message')->validates_common->minimum_length_password,
                 )));
             }
 
             //パスワード・パスワード再入力の比較
             if (empty($this->getMessages('password'))) {
                 if($this->password !== $this->re_password){
-                    $message = new Message($this->getDI()->get('config')->validates_common->match_password, 'password');
+                    $message = new Message($this->getDI()->get('message')->validates_common->match_password, 'password');
                     $this->appendMessage($message);
                 }
             }
@@ -116,7 +116,7 @@ class Users extends Model
         if (empty($this->getMessages('mail'))) {
             $this->validate(new EmailValidator(array(
                     'field' 	=> 'mail',
-                    'message'   => $this->getDI()->get('config')->validates_common->check_mail,
+                    'message'   => $this->getDI()->get('message')->validates_common->check_mail,
                     'required' 	=> 'false'
             )));
         }
@@ -125,7 +125,7 @@ class Users extends Model
         if (empty($this->getMessages('mail'))) {
             $this->validate(new UniquenessValidator(array(
                 'field' => 'mail',
-                'message' => $this->getDI()->get('config')->validates_common->uniq_mail
+                'message' => $this->getDI()->get('message')->validates_common->uniq_mail
             )));
         }
 
@@ -133,4 +133,53 @@ class Users extends Model
             return false;
         }
     }
+
+		/*
+		 * 検索結果を返す
+		 * @param $name
+		 * @param $mail
+		 * @return $users 検索結果
+		 */
+		public function getSearchResult($name, $mail)
+		{
+			$criteria = Users::query();
+
+			if(!empty($name)){
+				$criteria->andwhere('name LIKE :name:', ['name' => '%' . $name . '%']);
+			}
+			if(!empty($mail)){
+				$criteria->andwhere('mail LIKE :mail:', ['mail' => '%' . $mail . '%']);
+			}
+			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => $this->getDI()->get('config')->define->valid]);
+			$users = $criteria->execute();
+		}
+
+		/*
+		 * 全結果を返す
+		 * @return $users 全結果
+		 */
+		public function getAllResult()
+		{
+			$criteria = Users::query();
+			$criteria->andwhere('delete_flg = :delete_flg:', ['delete_flg' => $this->getDI()->get('config')->define->valid]);
+			$users = $criteria->execute();
+
+			return $users;
+		}
+
+		/*
+		 * IDで検索してユーザ情報を返す
+		 * @param $id
+		 * @return $user 全結果
+		 */
+		public function getUserInfo($id)
+		{
+			$user = Users::findFirst(array(
+				"(id = :id:)",
+				'bind' => array('id' => $id)
+			));
+
+			return $user;
+		}
+
 }
