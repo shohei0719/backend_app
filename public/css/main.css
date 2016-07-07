@@ -60,3 +60,7 @@ form img.thumb {
     vertical-align:bottom;
 }
 /* 画像サムネイル */
+
+.right-datetime {
+  margin-right:14px;
+}
