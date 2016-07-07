@@ -73,23 +73,10 @@ class AdminController extends ControllerBase
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移 ($this->config->define->list)
 		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
 
-		//いつか直す。
-		$status = $this->request->getPost('status');
-		!empty($status) ? $status : $status = 0;
-
 		switch($status){
-			//一覧から遷移
-			case $this->config->define->list:
-
-				$this->view->admin = $admin;
-				$this->view->created_admin = $created_admin;
-				$this->view->updated_admin = $updated_admin;
-
-				break;
 
 			//編集から遷移
 			case $this->config->define->edit:
@@ -132,6 +119,15 @@ class AdminController extends ControllerBase
 						)
 					);
 				}
+
+				break;
+
+			//一覧から遷移
+			default:
+
+				$this->view->admin = $admin;
+				$this->view->created_admin = $created_admin;
+				$this->view->updated_admin = $updated_admin;
 
 				break;
 		}

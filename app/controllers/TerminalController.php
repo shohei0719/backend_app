@@ -17,7 +17,7 @@ class TerminalController extends ControllerBase
 		$this->maker		= new Makers();
 		$this->os				= new Oss();
 		$this->organization = new Organizations();
-		$this->version  = new Versions(); 
+		$this->version  = new Versions();
 	}
 
 	//一覧
@@ -113,18 +113,9 @@ class TerminalController extends ControllerBase
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移 ($this->config->define->list)
 		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
 		switch($this->request->getPost('status')){
-			//一覧から遷移
-			case $this->config->define->list:
-
-				$this->view->terminal = $terminal;
-				$this->view->created_admin = $created_admin;
-				$this->view->updated_admin = $updated_admin;
-
-				break;
 
 			//編集から遷移
 			case $this->config->define->edit:
@@ -195,6 +186,14 @@ class TerminalController extends ControllerBase
 						)
 					);
 				}
+				break;
+
+			//一覧から遷移
+			default:
+
+				$this->view->terminal = $terminal;
+				$this->view->created_admin = $created_admin;
+				$this->view->updated_admin = $updated_admin;
 
 				break;
 		}

@@ -13,6 +13,7 @@ class VersionController extends ControllerBase
 
 		$this->version = new Versions();
 		$this->os			 = new Oss();
+		$this->admin   = new Admins();
 	}
 
 	//一覧
@@ -69,18 +70,9 @@ class VersionController extends ControllerBase
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移 ($this->config->define->list)
 		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
 		switch($this->request->getPost('status')){
-			//一覧から遷移
-			case $this->config->define->list:
-
-				$this->view->version = $version;
-				$this->view->created_admin = $created_admin;
-				$this->view->updated_admin = $updated_admin;
-
-				break;
 
 			//編集から遷移
 			case $this->config->define->edit:
@@ -116,6 +108,15 @@ class VersionController extends ControllerBase
 					);
 
 				}
+				break;
+
+			//一覧から遷移
+			default:
+
+				$this->view->version = $version;
+				$this->view->created_admin = $created_admin;
+				$this->view->updated_admin = $updated_admin;
+
 				break;
 		}
 	}

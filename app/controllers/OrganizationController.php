@@ -62,19 +62,9 @@ class OrganizationController extends ControllerBase
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移
 		 * 1 : 編集から遷移
 		 */
 		switch($this->request->getPost('status')){
-			//一覧から遷移
-			case $this->config->define->list:
-
-				$this->view->organization = $organization;
-				$this->view->created_admin = $created_admin;
-				$this->view->updated_admin = $updated_admin;
-
-				break;
-
 			//編集から遷移
 			case $this->config->define->edit:
 				//Post Params
@@ -106,6 +96,15 @@ class OrganizationController extends ControllerBase
 						)
 					);
 				}
+
+				break;
+
+			//一覧から遷移
+			default:
+
+				$this->view->organization = $organization;
+				$this->view->created_admin = $created_admin;
+				$this->view->updated_admin = $updated_admin;
 
 				break;
 		}

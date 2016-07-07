@@ -12,6 +12,7 @@ class UserController extends ControllerBase
 	 	$_auth = parent::checkRooting('user');
 
 		$this->user = new Users();
+		$this->admin = new Admins();
 	}
 
 	//一覧
@@ -76,18 +77,9 @@ class UserController extends ControllerBase
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移 ($this->config->define->list)
 		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
 		switch($this->request->getPost('status')){
-			//一覧から遷移
-			case $this->config->define->list:
-
-				$this->view->user = $user;
-				$this->view->created_user = $created_user;
-				$this->view->updated_user = $updated_user;
-
-				break;
 
 			//編集から遷移
 			case $this->config->define->edit:
@@ -129,6 +121,15 @@ class UserController extends ControllerBase
 						)
 					);
 				}
+				break;
+
+			//一覧から遷移
+			default:
+
+				$this->view->user = $user;
+				$this->view->created_user = $created_user;
+				$this->view->updated_user = $updated_user;
+
 				break;
 		}
 	}

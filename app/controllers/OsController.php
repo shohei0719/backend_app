@@ -56,24 +56,15 @@ class OsController extends ControllerBase
 		}
 
 		//検索
-		$os = $this->os->getCarrierInfo($id);
+		$os = $this->os->getOsInfo($id);
 		$created_admin = $this->admin->getAdminInfo($os->created_id);
 		$updated_admin = $this->admin->getAdminInfo($os->updated_id);
 
 		/*
 		 * statusチェック
-		 * 0 : 一覧から遷移 ($this->config->define->list)
 		 * 1 : 編集から遷移 ($this->config->define->edit)
 		 */
 		switch($this->request->getPost('status')){
-			//一覧から遷移
-			case $this->config->define->list:
-
-				$this->view->os = $os;
-				$this->view->created_admin = $created_admin;
-				$this->view->updated_admin = $updated_admin;
-
-				break;
 
 			//編集から遷移
 			case $this->config->define->edit:
@@ -101,11 +92,20 @@ class OsController extends ControllerBase
 
 					$this->dispatcher->forward(
 						array(
-							'controller' => 'Maker'
+							'controller' => 'Os'
 							,'action' => 'success'
 						)
 					);
 				}
+				break;
+
+			//一覧から遷移
+			default:
+
+				$this->view->os = $os;
+				$this->view->created_admin = $created_admin;
+				$this->view->updated_admin = $updated_admin;
+
 				break;
 		}
 	}
