@@ -154,7 +154,7 @@ $(function(){
 		<label for="name"><i class="fa fa-user" aria-hidden="true"></i>&nbsp;イメージ</label><br/>
       <input type="file" name="image">
       {#<div style="display: inline-block;"><input type="file" name="image" multiple="multiple" />&nbsp;<a id="button" href=""><i class="fa fa-trash-o fa-lg"></i></a></div>#}
-      <div class="preview" />
+      <div class="preview" /></div>
     </label>
   </div>
 
